@@ -43,6 +43,16 @@ export default function GamePlay() {
     console.log('Show dare before reset:', showDare);
     console.log('Current dare before reset:', currentDare);
     
+    // CRITICAL FIX: Reset animation controls to center position before showing new card
+    console.log('Resetting animation controls to center position');
+    await controls.start({ 
+      x: 0, 
+      rotate: 0, 
+      opacity: 1, 
+      transition: { duration: 0 } 
+    });
+    console.log('Animation controls reset complete');
+    
     setShowDare(false);
     setCurrentDare(null);
     
@@ -114,6 +124,15 @@ export default function GamePlay() {
 
     // Wait for animation to complete
     await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // Reset animation controls to center position for next card
+    console.log('Resetting animation controls after swipe');
+    await controls.start({ 
+      x: 0, 
+      rotate: 0, 
+      opacity: 1, 
+      transition: { duration: 0 } 
+    });
     
     // Reset for next turn - but let the store handle the progression
     setShowDare(false);
