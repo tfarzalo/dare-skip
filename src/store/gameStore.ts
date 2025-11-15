@@ -16,6 +16,7 @@ interface GameStore {
   checkEndgameCondition: () => { winner: Player; loser: Player } | null;
   selectSkipDare: (dare: DareCard) => void;
   nextTurn: () => void;
+  continueToNextTurn: () => void;
   resetGame: () => void;
   setGameState: (state: GameState) => void;
 }
@@ -118,11 +119,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({ gameSession: updatedSession });
     
-    // Move to next turn after a delay - ensure proper state transition
+    // Move to continue screen after a delay
     setTimeout(() => {
       const currentState = get().gameSession?.gameState;
       if (currentState === 'acceptFlow') {
-        get().nextTurn();
+        const continueSession = {
+          ...get().gameSession!,
+          gameState: 'continueScreen' as GameState
+        };
+        set({ gameSession: continueSession });
       }
     }, 1500);
   },
@@ -205,11 +210,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
         };
         set({ gameSession: updatedSessionWithWinner });
       } else {
-        // Only move to next turn if we're still in action card state
+        // Move to continue screen instead of directly to next turn
         const currentState = get().gameSession?.gameState;
         if (currentState === 'actionCardHiddenDraw') {
-          console.log('Moving to next turn');
-          get().nextTurn();
+          console.log('Moving to continue screen');
+          const continueSession = {
+            ...get().gameSession!,
+            gameState: 'continueScreen' as GameState
+          };
+          set({ gameSession: continueSession });
         }
       }
     }, 2000);
@@ -271,6 +280,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     
     // Log the turn change for debugging
     console.log(`Turn changed: Player ${gameSession.currentPlayerIndex} -> Player ${nextPlayerIndex}`);
+  },
+
+  continueToNextTurn: () => {
+    const { gameSession } = get();
+    if (!gameSession) return;
+
+    // Simply move to next turn from continue screen
+    get().nextTurn();
   },
 
   resetGame: () => {

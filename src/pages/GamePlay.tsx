@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useAnimation, PanInfo } from 'framer-motion';
 import { useGesture } from '@use-gesture/react';
-import { ArrowLeft, ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Sparkles, Eye, EyeOff, LogOut, Play } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import { themes, animations } from '../styles/themes';
 import { toast } from 'sonner';
 
 export default function GamePlay() {
   const navigate = useNavigate();
-  const { gameSession, drawDareCard, acceptDare, skipDare, setGameState } = useGameStore();
+  const { gameSession, drawDareCard, acceptDare, skipDare, setGameState, continueToNextTurn } = useGameStore();
   const [currentDare, setCurrentDare] = useState<any>(null);
   const [showDare, setShowDare] = useState(false);
   const controls = useAnimation();
@@ -125,20 +125,85 @@ export default function GamePlay() {
     const isPlayer1Turn = gameSession.currentPlayerIndex === 0;
     const targetPlayer = dare.direction === 'giver' ? otherPlayer : currentPlayer;
     
+    let text = dare.textVariantA;
     if (targetPlayer.anatomyTag === 'breasts') {
-      return dare.textVariantA;
+      text = dare.textVariantA;
     } else if (targetPlayer.anatomyTag === 'chest') {
-      return dare.textVariantB;
+      text = dare.textVariantB;
     } else {
       // Custom anatomy - use appropriate variant based on context
-      return dare.textVariantB; // Default to chest variant for custom
+      text = dare.textVariantB; // Default to chest variant for custom
     }
+    
+    // Replace generic terms with player's favorite word if available
+    if (targetPlayer.favoriteWord) {
+      text = text.replace(/\bpenis\b/gi, targetPlayer.favoriteWord);
+      text = text.replace(/\bvagina\b/gi, targetPlayer.favoriteWord);
+      text = text.replace(/\bcock\b/gi, targetPlayer.favoriteWord);
+      text = text.replace(/\bpussy\b/gi, targetPlayer.favoriteWord);
+    }
+    
+    return text;
   };
 
   if (!gameSession) return null;
 
+  const handleQuit = () => {
+    if (window.confirm('Are you sure you want to quit the game?')) {
+      navigate('/');
+    }
+  };
+
+  const handleContinue = () => {
+    continueToNextTurn();
+  };
+
   return (
     <div className={`min-h-screen ${currentTheme.background} velvet-overlay relative overflow-hidden`}>
+      {/* Quit Button */}
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          onClick={handleQuit}
+          className="bg-red-600/80 hover:bg-red-600 backdrop-blur-sm rounded-full p-3 text-white transition-all duration-200 transform hover:scale-105"
+          title="Quit Game"
+        >
+          <LogOut className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Continue Screen */}
+      {gameSession.gameState === 'continueScreen' && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute inset-0 bg-black/80 backdrop-blur-sm z-30 flex items-center justify-center"
+        >
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-gray-900/90 backdrop-blur-sm rounded-2xl p-8 text-center space-y-6 max-w-md mx-4"
+          >
+            <div className="space-y-4">
+              <Play className="w-16 h-16 text-amber-500 mx-auto" />
+              <h2 className="serif text-2xl font-bold text-white">
+                Ready for next turn?
+              </h2>
+              <p className="text-gray-300">
+                {gameSession.players[gameSession.currentPlayerIndex === 0 ? 1 : 0].name}'s turn is coming up
+              </p>
+            </div>
+            
+            <button
+              onClick={handleContinue}
+              className="w-full px-8 py-4 bg-gradient-to-r from-amber-500 to-rose-500 rounded-full text-white font-bold text-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
+            >
+              Continue
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+
       {/* Skip Bank Counters */}
       <div className="absolute top-4 left-4 right-4 flex justify-between z-10">
         <div className="bg-black/30 backdrop-blur-sm rounded-lg px-4 py-2">

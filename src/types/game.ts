@@ -1,7 +1,7 @@
 export type Gender = 'woman' | 'man' | 'nonbinary' | 'custom';
 export type SpiceLevel = 'soft' | 'medium' | 'wild';
 export type AnatomyTag = 'breasts' | 'chest' | 'custom';
-export type GameState = 'setup' | 'playerTurn' | 'dareDraw' | 'swipeDecision' | 'skipFlow' | 'acceptFlow' | 'actionCardHiddenDraw' | 'endgameTriggered' | 'dareRevealGrid' | 'dareFlipReveal' | 'actionCardReveal' | 'finalResult' | 'reset';
+export type GameState = 'setup' | 'playerTurn' | 'dareDraw' | 'swipeDecision' | 'skipFlow' | 'acceptFlow' | 'actionCardHiddenDraw' | 'continueScreen' | 'endgameTriggered' | 'dareRevealGrid' | 'dareFlipReveal' | 'actionCardReveal' | 'finalResult' | 'reset';
 
 export interface Player {
   id: string;
@@ -9,6 +9,7 @@ export interface Player {
   gender: Gender;
   pronouns?: string;
   anatomyTag: AnatomyTag;
+  favoriteWord?: string;
   skipBank: DareCard[];
   actionCards: ActionCard[];
 }

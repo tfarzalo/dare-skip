@@ -9,10 +9,8 @@ import { animations } from '../styles/themes';
 interface PlayerForm {
   name: string;
   gender: Gender;
-  pronouns: string;
-  anatomyTag: AnatomyTag;
+  favoriteWord: string;
   customGender?: string;
-  customAnatomy?: string;
 }
 
 interface GameSettingsForm {
@@ -29,14 +27,12 @@ export default function GameSetup() {
   const [player1, setPlayer1] = useState<PlayerForm>({
     name: '',
     gender: 'woman',
-    pronouns: '',
-    anatomyTag: 'breasts'
+    favoriteWord: ''
   });
   const [player2, setPlayer2] = useState<PlayerForm>({
     name: '',
     gender: 'man',
-    pronouns: '',
-    anatomyTag: 'chest'
+    favoriteWord: ''
   });
   const [settings, setSettings] = useState<GameSettingsForm>({
     deckSize: gameSettings.deckSize,
@@ -61,8 +57,8 @@ export default function GameSetup() {
           id: 'player-1',
           name: player1.name || 'Player 1',
           gender: player1.gender,
-          pronouns: player1.pronouns,
-          anatomyTag: player1.anatomyTag,
+          favoriteWord: player1.favoriteWord,
+          anatomyTag: player1.gender === 'woman' ? 'breasts' : 'chest',
           skipBank: [],
           actionCards: []
         },
@@ -70,8 +66,8 @@ export default function GameSetup() {
           id: 'player-2',
           name: player2.name || 'Player 2',
           gender: player2.gender,
-          pronouns: player2.pronouns,
-          anatomyTag: player2.anatomyTag,
+          favoriteWord: player2.favoriteWord,
+          anatomyTag: player2.gender === 'woman' ? 'breasts' : 'chest',
           skipBank: [],
           actionCards: []
         }
@@ -188,6 +184,16 @@ function PlayerSetup({ player, onChange, title }: {
   onChange: (player: PlayerForm) => void; 
   title: string;
 }) {
+  const getFavoriteWordLabel = () => {
+    if (player.gender === 'woman') {
+      return "Favorite word for penis";
+    } else if (player.gender === 'man') {
+      return "Favorite word for vagina";
+    } else {
+      return "Favorite intimate word";
+    }
+  };
+
   return (
     <div className="w-full max-w-md space-y-6">
       <h3 className="serif text-xl font-semibold text-white text-center mb-6">
@@ -210,7 +216,7 @@ function PlayerSetup({ player, onChange, title }: {
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Gender / Presentation
+            Gender
           </label>
           <select
             value={player.gender}
@@ -238,43 +244,19 @@ function PlayerSetup({ player, onChange, title }: {
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Pronouns (optional)
+            {getFavoriteWordLabel()}
           </label>
           <input
             type="text"
-            value={player.pronouns}
-            onChange={(e) => onChange({ ...player, pronouns: e.target.value })}
+            value={player.favoriteWord}
+            onChange={(e) => onChange({ ...player, favoriteWord: e.target.value })}
             className="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
-            placeholder="e.g., she/her, he/him, they/them"
+            placeholder="e.g., cock, pussy, etc."
           />
+          <p className="text-xs text-gray-500 mt-1">
+            This will be used to personalize your dares
+          </p>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Anatomy Preference
-          </label>
-          <select
-            value={player.anatomyTag}
-            onChange={(e) => onChange({ ...player, anatomyTag: e.target.value as AnatomyTag })}
-            className="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-          >
-            <option value="breasts">Breasts</option>
-            <option value="chest">Chest</option>
-            <option value="custom">Custom term</option>
-          </select>
-        </div>
-
-        {player.anatomyTag === 'custom' && (
-          <div>
-            <input
-              type="text"
-              value={player.customAnatomy || ''}
-              onChange={(e) => onChange({ ...player, customAnatomy: e.target.value })}
-              className="w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
-              placeholder="Enter custom anatomy term"
-            />
-          </div>
-        )}
       </div>
     </div>
   );
