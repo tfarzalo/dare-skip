@@ -2,7 +2,6 @@
   "name": "dare-to-skip",
   "private": true,
   "version": "0.0.0",
-  "homepage": "https://tfarzalo.github.io/dare-skip",
   "type": "module",
   "scripts": {
     "dev": "vite",
