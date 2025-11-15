@@ -280,12 +280,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     
     // Log the turn change for debugging
     console.log(`Turn changed: Player ${gameSession.currentPlayerIndex} -> Player ${nextPlayerIndex}`);
+    console.log('New game state: playerTurn');
   },
 
   continueToNextTurn: () => {
     const { gameSession } = get();
     if (!gameSession) return;
 
+    console.log('Continuing to next turn from continue screen');
     // Simply move to next turn from continue screen
     get().nextTurn();
   },

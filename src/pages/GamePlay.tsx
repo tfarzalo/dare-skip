@@ -20,8 +20,12 @@ export default function GamePlay() {
       return;
     }
 
+    console.log('GamePlay useEffect triggered - State:', gameSession.gameState, 'Player:', gameSession.currentPlayerIndex);
+    console.log('Show dare:', showDare, 'Current dare:', currentDare);
+
     // Only start a new turn when it's playerTurn and we have a valid session
     if (gameSession.gameState === 'playerTurn') {
+      console.log('Game state is playerTurn, starting new turn');
       // Add a small delay to ensure smooth transitions
       const timer = setTimeout(() => {
         startNewTurn();
@@ -29,20 +33,44 @@ export default function GamePlay() {
       
       return () => clearTimeout(timer);
     }
-  }, [gameSession, navigate]);
+  }, [gameSession?.gameState, gameSession?.currentPlayerIndex, navigate]);
 
   const startNewTurn = async () => {
+    console.log('=== STARTING NEW TURN ===');
     console.log('Starting new turn for player:', gameSession.currentPlayerIndex);
+    console.log('Current game state:', gameSession.gameState);
+    console.log('Dare deck remaining:', gameSession.dareDeck.length);
+    console.log('Show dare before reset:', showDare);
+    console.log('Current dare before reset:', currentDare);
+    
     setShowDare(false);
     setCurrentDare(null);
     
+    console.log('Show dare after reset:', showDare);
+    console.log('Current dare after reset:', currentDare);
+    
+    // Small delay to ensure smooth transition
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    console.log('About to draw dare card...');
     const dare = drawDareCard();
+    console.log('Drew dare card:', dare);
+    
     if (dare) {
+      console.log('Setting current dare and preparing to show card');
       setCurrentDare(dare);
+      console.log('Current dare set to:', dare);
+      
       // Show turn announcement first
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      console.log('About to set showDare to true');
       setShowDare(true);
+      console.log('Show dare set to true');
+      
+      console.log('=== DARE CARD SUCCESSFULLY SHOWN ===');
     } else {
+      console.log('=== NO MORE DARE CARDS, ENDING GAME ===');
       // No more dares, check for winner based on action cards
       const player1Cards = gameSession.players[0].actionCards.length;
       const player2Cards = gameSession.players[1].actionCards.length;
@@ -155,6 +183,11 @@ export default function GamePlay() {
   };
 
   const handleContinue = () => {
+    console.log('Continue button clicked, moving to next turn');
+    console.log('Current game state:', gameSession.gameState);
+    console.log('Current player index:', gameSession.currentPlayerIndex);
+    console.log('Show dare state:', showDare);
+    console.log('Current dare:', currentDare);
     continueToNextTurn();
   };
 
@@ -176,7 +209,7 @@ export default function GamePlay() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="absolute inset-0 bg-black/80 backdrop-blur-sm z-30 flex items-center justify-center"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-30 flex items-center justify-center"
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
@@ -190,7 +223,7 @@ export default function GamePlay() {
                 Ready for next turn?
               </h2>
               <p className="text-gray-300">
-                {gameSession.players[gameSession.currentPlayerIndex === 0 ? 1 : 0].name}'s turn is coming up
+                {gameSession.players[gameSession.currentPlayerIndex === 0 ? 1 : 0].name}'s turn is next
               </p>
             </div>
             
