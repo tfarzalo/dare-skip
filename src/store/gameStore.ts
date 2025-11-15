@@ -78,6 +78,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const updatedSession = {
       ...gameSession,
       dareDeck: remainingDeck,
+      usedDares: [...gameSession.usedDares, drawnCard],
       gameState: 'dareDraw' as GameState
     };
 
