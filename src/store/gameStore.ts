@@ -45,23 +45,35 @@ const filterDaresBySpiceLevel = (dares: DareCard[], level: GameSettings['spiceLe
   return dares; // wild includes all
 };
 
+const filterActionsByCategories = (actions: ActionCard[], categories: string[]): ActionCard[] => {
+  return actions.filter(action => {
+    // Extract category from actionId (e.g., 'touch-kiss-chest' -> 'touch')
+    const category = action.actionId.split('-')[0];
+    return categories.includes(category);
+  });
+};
+
 export const useGameStore = create<GameStore>((set, get) => ({
   gameSession: null,
   gameSettings: createInitialSettings(),
 
   initializeGame: (players, settings) => {
     const filteredDares = filterDaresBySpiceLevel(dareCards, settings.spiceLevel);
-    const selectedDares = shuffleArray(filteredDares).slice(0, settings.deckSize);
-    const shuffledActionCards = shuffleArray(actionCards);
+    const filteredActions = filterActionsByCategories(actionCards, settings.enabledActionCategories);
+    
+    // Shuffle and select cards
+    const shuffledDares = shuffleArray(filteredDares);
+    const selectedDares = shuffledDares.slice(0, settings.deckSize);
+    const shuffledActions = shuffleArray(filteredActions);
 
     const gameSession: GameSession = {
       players: [
         { ...players[0], skipBank: [], actionCards: [] },
         { ...players[1], skipBank: [], actionCards: [] }
       ] as [Player, Player],
-      currentPlayerIndex: 0,
+      currentPlayerIndex: Math.random() > 0.5 ? 0 : 1, // Random starting player
       dareDeck: selectedDares,
-      actionDeck: shuffledActionCards,
+      actionDeck: shuffledActions,
       usedDares: [],
       usedActions: [],
       gameState: 'playerTurn'
@@ -72,12 +84,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   drawDareCard: () => {
     const { gameSession } = get();
-    if (!gameSession || gameSession.dareDeck.length === 0) return null;
+    if (!gameSession || gameSession.dareDeck.length === 0) {
+      console.log('No dare cards available');
+      return null;
+    }
 
-    const [drawnCard, ...remainingDeck] = gameSession.dareDeck;
+    // Get a random card from the remaining deck
+    const randomIndex = Math.floor(Math.random() * gameSession.dareDeck.length);
+    const drawnCard = gameSession.dareDeck[randomIndex];
+    const remainingDeck = gameSession.dareDeck.filter((_, index) => index !== randomIndex);
+    
+    console.log('Drew dare card:', drawnCard.name, 'Remaining:', remainingDeck.length);
+    
     const updatedSession = {
       ...gameSession,
       dareDeck: remainingDeck,
+      usedDares: [...gameSession.usedDares, drawnCard],
       gameState: 'dareDraw' as GameState
     };
 
@@ -96,10 +118,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({ gameSession: updatedSession });
     
-    // Move to next turn after a delay
+    // Move to next turn after a delay - ensure proper state transition
     setTimeout(() => {
-      get().nextTurn();
-    }, 1000);
+      const currentState = get().gameSession?.gameState;
+      if (currentState === 'acceptFlow') {
+        get().nextTurn();
+      }
+    }, 1500);
   },
 
   skipDare: () => {
@@ -126,16 +151,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({ gameSession: updatedSession });
 
-    // Draw action card
-    return get().drawActionCard();
+    // Draw action card and handle the flow properly
+    setTimeout(() => {
+      get().drawActionCard();
+    }, 1000);
+
+    return null; // Don't return immediately, let drawActionCard handle it
   },
 
   drawActionCard: () => {
     const { gameSession } = get();
-    if (!gameSession || gameSession.actionDeck.length === 0) return null;
+    if (!gameSession || gameSession.actionDeck.length === 0) {
+      console.log('No action cards available');
+      return null;
+    }
 
-    const [drawnCard, ...remainingDeck] = gameSession.actionDeck;
+    // Get a random card from the remaining deck
+    const randomIndex = Math.floor(Math.random() * gameSession.actionDeck.length);
+    const drawnCard = gameSession.actionDeck[randomIndex];
+    const remainingDeck = gameSession.actionDeck.filter((_, index) => index !== randomIndex);
+    
     const currentPlayer = gameSession.players[gameSession.currentPlayerIndex];
+    
+    console.log('Drew action card:', drawnCard.name, 'for player:', gameSession.currentPlayerIndex);
 
     // Add action card to player's collection
     const updatedPlayers = [...gameSession.players];
@@ -154,10 +192,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({ gameSession: updatedSession });
 
-    // Check for endgame condition
+    // Check for endgame condition and handle progression properly
     setTimeout(() => {
       const endgameResult = get().checkEndgameCondition();
       if (endgameResult) {
+        console.log('Endgame triggered! Winner:', endgameResult.winner.name, 'Loser:', endgameResult.loser.name);
         const updatedSessionWithWinner = {
           ...get().gameSession!,
           winner: endgameResult.winner,
@@ -166,9 +205,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
         };
         set({ gameSession: updatedSessionWithWinner });
       } else {
-        get().nextTurn();
+        // Only move to next turn if we're still in action card state
+        const currentState = get().gameSession?.gameState;
+        if (currentState === 'actionCardHiddenDraw') {
+          console.log('Moving to next turn');
+          get().nextTurn();
+        }
       }
-    }, 1500);
+    }, 2000);
 
     return drawnCard;
   },
@@ -224,6 +268,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     };
 
     set({ gameSession: updatedSession });
+    
+    // Log the turn change for debugging
+    console.log(`Turn changed: Player ${gameSession.currentPlayerIndex} -> Player ${nextPlayerIndex}`);
   },
 
   resetGame: () => {

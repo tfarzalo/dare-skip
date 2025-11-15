@@ -20,33 +20,47 @@ export default function GamePlay() {
       return;
     }
 
+    // Only start a new turn when it's playerTurn and we have a valid session
     if (gameSession.gameState === 'playerTurn') {
-      startNewTurn();
+      // Add a small delay to ensure smooth transitions
+      const timer = setTimeout(() => {
+        startNewTurn();
+      }, 500);
+      
+      return () => clearTimeout(timer);
     }
   }, [gameSession, navigate]);
 
   const startNewTurn = async () => {
+    console.log('Starting new turn for player:', gameSession.currentPlayerIndex);
     setShowDare(false);
+    setCurrentDare(null);
+    
     const dare = drawDareCard();
     if (dare) {
       setCurrentDare(dare);
       // Show turn announcement first
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       setShowDare(true);
     } else {
-      // No more dares, check for winner
+      // No more dares, check for winner based on action cards
       const player1Cards = gameSession.players[0].actionCards.length;
       const player2Cards = gameSession.players[1].actionCards.length;
       
+      console.log('Game ended - Player 1 cards:', player1Cards, 'Player 2 cards:', player2Cards);
+      
       if (player1Cards < player2Cards) {
+        // Player 2 wins (fewer action cards means they skipped less)
         setGameState('endgameTriggered');
         navigate('/endgame');
       } else if (player2Cards < player1Cards) {
+        // Player 1 wins
         setGameState('endgameTriggered');
         navigate('/endgame');
       } else {
         // Tie - random winner
         const winner = Math.random() > 0.5 ? 0 : 1;
+        console.log('Tie resolved - winner:', winner);
         setGameState('endgameTriggered');
         navigate('/endgame');
       }
@@ -55,6 +69,8 @@ export default function GamePlay() {
 
   const handleSwipe = async (direction: 'left' | 'right') => {
     if (!currentDare || !gameSession) return;
+
+    console.log('Handle swipe:', direction, 'for player:', gameSession.currentPlayerIndex);
 
     if (direction === 'left') {
       // Accept dare
@@ -69,9 +85,9 @@ export default function GamePlay() {
     }
 
     // Wait for animation to complete
-    await new Promise(resolve => setTimeout(resolve, 600));
+    await new Promise(resolve => setTimeout(resolve, 800));
     
-    // Reset for next turn
+    // Reset for next turn - but let the store handle the progression
     setShowDare(false);
     setCurrentDare(null);
   };
@@ -159,17 +175,16 @@ export default function GamePlay() {
         </p>
       </motion.div>
 
-      {/* Swipe Indicators */}
+      {/* Swipe Indicators - Simplified and less intrusive */}
       {showDare && (
         <div className="absolute top-1/2 left-4 transform -translate-y-1/2 z-10">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.5 }}
-            className="bg-green-500/20 backdrop-blur-sm rounded-lg px-3 py-2 text-green-300 text-sm font-medium"
+            className="bg-green-500/10 backdrop-blur-sm rounded-full px-2 py-1 text-green-300 text-xs font-medium"
           >
-            <ArrowLeft className="w-4 h-4 inline mr-1" />
-            Accept
+            ← Accept
           </motion.div>
         </div>
       )}
@@ -180,10 +195,9 @@ export default function GamePlay() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.5 }}
-            className="bg-red-500/20 backdrop-blur-sm rounded-lg px-3 py-2 text-red-300 text-sm font-medium"
+            className="bg-red-500/10 backdrop-blur-sm rounded-full px-2 py-1 text-red-300 text-xs font-medium"
           >
-            Skip
-            <ArrowRight className="w-4 h-4 inline ml-1" />
+            Skip →
           </motion.div>
         </div>
       )}
@@ -227,30 +241,30 @@ export default function GamePlay() {
               </div>
 
               {/* Card Content */}
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-lg text-gray-200 text-center leading-relaxed">
+              <div className="flex-1 flex items-center justify-center px-4">
+                <p className="text-xl text-white text-center leading-relaxed font-medium drop-shadow-lg">
                   {getDareText(currentDare)}
                 </p>
               </div>
 
               {/* Card Footer */}
               <div className="text-center">
-                <p className="text-sm text-gray-400 mb-4">
+                <p className="text-sm text-gray-300 mb-6 font-medium">
                   Swipe left to accept • Swipe right to skip
                 </p>
                 
-                <div className="flex justify-center gap-4">
+                <div className="flex justify-center gap-6">
                   <button
                     onClick={() => handleSwipe('left')}
-                    className="px-6 py-3 bg-green-500/20 hover:bg-green-500/30 rounded-full text-green-300 font-medium transition-all duration-200 transform hover:scale-105"
+                    className="px-8 py-4 bg-green-600/80 hover:bg-green-600 rounded-full text-white font-bold text-lg transition-all duration-200 transform hover:scale-105 shadow-lg backdrop-blur-sm"
                   >
-                    Accept
+                    Accept Dare
                   </button>
                   <button
                     onClick={() => handleSwipe('right')}
-                    className="px-6 py-3 bg-red-500/20 hover:bg-red-500/30 rounded-full text-red-300 font-medium transition-all duration-200 transform hover:scale-105"
+                    className="px-8 py-4 bg-red-600/80 hover:bg-red-600 rounded-full text-white font-bold text-lg transition-all duration-200 transform hover:scale-105 shadow-lg backdrop-blur-sm"
                   >
-                    Skip
+                    Skip Dare
                   </button>
                 </div>
               </div>
