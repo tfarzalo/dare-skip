@@ -20,20 +20,15 @@ export default function GamePlay() {
       return;
     }
 
-    console.log('GamePlay useEffect triggered - State:', gameSession.gameState, 'Player:', gameSession.currentPlayerIndex);
-    console.log('Show dare:', showDare, 'Current dare:', currentDare);
-
-    // Only start a new turn when it's playerTurn and we have a valid session
-    if (gameSession.gameState === 'playerTurn') {
-      console.log('Game state is playerTurn, starting new turn');
-      // Add a small delay to ensure smooth transitions
+    // Only start a new turn when we're ready to draw and there's no active dare showing
+    if (gameSession.gameState === 'playerTurn' && !currentDare && !showDare) {
       const timer = setTimeout(() => {
         startNewTurn();
       }, 500);
-      
+
       return () => clearTimeout(timer);
     }
-  }, [gameSession?.gameState, gameSession?.currentPlayerIndex, navigate]);
+  }, [gameSession?.gameState, gameSession?.currentPlayerIndex, navigate, currentDare, showDare]);
 
   const startNewTurn = async () => {
     console.log('=== STARTING NEW TURN ===');
@@ -338,7 +333,7 @@ export default function GamePlay() {
             animate={controls}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            {...bind}
+            {...bind()}
           >
             <div className={`${currentTheme.cardBg} ${currentTheme.cardBorder} border-2 rounded-2xl p-8 w-80 md:w-96 h-96 flex flex-col justify-between glossy-card card-tilt shadow-2xl cursor-grab active:cursor-grabbing`}>
               {/* Card Header */}
