@@ -97,11 +97,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     
     console.log('Drew dare card:', drawnCard.name, 'Remaining:', remainingDeck.length);
     
+    // Keep game state as playerTurn - don't change state here
     const updatedSession = {
       ...gameSession,
       dareDeck: remainingDeck,
-      usedDares: [...gameSession.usedDares, drawnCard],
-      gameState: 'dareDraw' as GameState
+      usedDares: [...gameSession.usedDares, drawnCard]
     };
 
     set({ gameSession: updatedSession });
@@ -112,24 +112,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { gameSession } = get();
     if (!gameSession) return;
 
+    console.log('Dare accepted by player:', gameSession.currentPlayerIndex);
+    
+    // Move directly to continue screen - no delays
     const updatedSession = {
       ...gameSession,
-      gameState: 'acceptFlow' as GameState
+      gameState: 'continueScreen' as GameState
     };
 
     set({ gameSession: updatedSession });
-    
-    // Move to continue screen after a delay
-    setTimeout(() => {
-      const currentState = get().gameSession?.gameState;
-      if (currentState === 'acceptFlow') {
-        const continueSession = {
-          ...get().gameSession!,
-          gameState: 'continueScreen' as GameState
-        };
-        set({ gameSession: continueSession });
-      }
-    }, 1500);
   },
 
   skipDare: () => {
@@ -141,6 +132,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     if (!lastDrawnDare) return null;
 
+    console.log('Dare skipped by player:', gameSession.currentPlayerIndex);
+
     // Add dare to skip bank
     const updatedPlayers = [...gameSession.players];
     updatedPlayers[gameSession.currentPlayerIndex] = {
@@ -148,20 +141,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
       skipBank: [...currentPlayer.skipBank, lastDrawnDare]
     };
 
+    // Draw action card immediately
+    const actionCard = get().drawActionCard();
+    
+    // Move to continue screen
     const updatedSession = {
       ...gameSession,
       players: updatedPlayers as [Player, Player],
-      gameState: 'skipFlow' as GameState
+      gameState: 'continueScreen' as GameState
     };
 
     set({ gameSession: updatedSession });
-
-    // Draw action card and handle the flow properly
-    setTimeout(() => {
-      get().drawActionCard();
-    }, 1000);
-
-    return null; // Don't return immediately, let drawActionCard handle it
+    
+    return actionCard;
   },
 
   drawActionCard: () => {
@@ -191,37 +183,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ...gameSession,
       players: updatedPlayers as [Player, Player],
       actionDeck: remainingDeck,
-      usedActions: [...gameSession.usedActions, drawnCard],
-      gameState: 'actionCardHiddenDraw' as GameState
+      usedActions: [...gameSession.usedActions, drawnCard]
     };
 
     set({ gameSession: updatedSession });
-
-    // Check for endgame condition and handle progression properly
-    setTimeout(() => {
-      const endgameResult = get().checkEndgameCondition();
-      if (endgameResult) {
-        console.log('Endgame triggered! Winner:', endgameResult.winner.name, 'Loser:', endgameResult.loser.name);
-        const updatedSessionWithWinner = {
-          ...get().gameSession!,
-          winner: endgameResult.winner,
-          loser: endgameResult.loser,
-          gameState: 'endgameTriggered' as GameState
-        };
-        set({ gameSession: updatedSessionWithWinner });
-      } else {
-        // Move to continue screen instead of directly to next turn
-        const currentState = get().gameSession?.gameState;
-        if (currentState === 'actionCardHiddenDraw') {
-          console.log('Moving to continue screen');
-          const continueSession = {
-            ...get().gameSession!,
-            gameState: 'continueScreen' as GameState
-          };
-          set({ gameSession: continueSession });
-        }
-      }
-    }, 2000);
+    
+    // Check for endgame condition immediately
+    const endgameResult = get().checkEndgameCondition();
+    if (endgameResult) {
+      console.log('Endgame triggered! Winner:', endgameResult.winner.name, 'Loser:', endgameResult.loser.name);
+      const updatedSessionWithWinner = {
+        ...get().gameSession!,
+        winner: endgameResult.winner,
+        loser: endgameResult.loser,
+        gameState: 'endgameTriggered' as GameState
+      };
+      set({ gameSession: updatedSessionWithWinner });
+    }
 
     return drawnCard;
   },
@@ -288,8 +266,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!gameSession) return;
 
     console.log('Continuing to next turn from continue screen');
-    // Simply move to next turn from continue screen
-    get().nextTurn();
+    
+    // Check for endgame condition first
+    const endgameResult = get().checkEndgameCondition();
+    if (endgameResult) {
+      console.log('Endgame triggered from continue screen! Winner:', endgameResult.winner.name, 'Loser:', endgameResult.loser.name);
+      const updatedSessionWithWinner = {
+        ...gameSession,
+        winner: endgameResult.winner,
+        loser: endgameResult.loser,
+        gameState: 'endgameTriggered' as GameState
+      };
+      set({ gameSession: updatedSessionWithWinner });
+    } else {
+      // Simply move to next turn from continue screen
+      get().nextTurn();
+    }
   },
 
   resetGame: () => {

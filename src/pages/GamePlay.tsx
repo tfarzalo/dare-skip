@@ -20,15 +20,22 @@ export default function GamePlay() {
       return;
     }
 
-    // Only start a new turn when we're ready to draw and there's no active dare showing
-    if (gameSession.gameState === 'playerTurn' && !currentDare && !showDare) {
-      const timer = setTimeout(() => {
-        startNewTurn();
-      }, 500);
+    console.log('GamePlay useEffect triggered - State:', gameSession.gameState, 'Player:', gameSession.currentPlayerIndex);
+    console.log('Current dare:', currentDare, 'Show dare:', showDare);
 
-      return () => clearTimeout(timer);
+    // Handle endgame state
+    if (gameSession.gameState === 'endgameTriggered') {
+      console.log('Endgame triggered, navigating to endgame');
+      navigate('/endgame');
+      return;
     }
-  }, [gameSession?.gameState, gameSession?.currentPlayerIndex, navigate, currentDare, showDare]);
+
+    // Start new turn when entering playerTurn state
+    if (gameSession.gameState === 'playerTurn') {
+      console.log('Game state is playerTurn, starting new turn');
+      startNewTurn();
+    }
+  }, [gameSession?.gameState, navigate]);
 
   const startNewTurn = async () => {
     console.log('=== STARTING NEW TURN ===');
@@ -38,65 +45,32 @@ export default function GamePlay() {
     console.log('Show dare before reset:', showDare);
     console.log('Current dare before reset:', currentDare);
     
-    // CRITICAL FIX: Reset animation controls to center position before showing new card
-    console.log('Resetting animation controls to center position');
+    // Reset component state
+    setShowDare(false);
+    setCurrentDare(null);
+    
+    // Reset animation controls to center position
     await controls.start({ 
       x: 0, 
       rotate: 0, 
       opacity: 1, 
       transition: { duration: 0 } 
     });
-    console.log('Animation controls reset complete');
-    
-    setShowDare(false);
-    setCurrentDare(null);
-    
-    console.log('Show dare after reset:', showDare);
-    console.log('Current dare after reset:', currentDare);
-    
-    // Small delay to ensure smooth transition
-    await new Promise(resolve => setTimeout(resolve, 300));
     
     console.log('About to draw dare card...');
     const dare = drawDareCard();
     console.log('Drew dare card:', dare);
     
     if (dare) {
-      console.log('Setting current dare and preparing to show card');
+      console.log('Setting current dare and showing card');
       setCurrentDare(dare);
-      console.log('Current dare set to:', dare);
-      
-      // Show turn announcement first
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      console.log('About to set showDare to true');
       setShowDare(true);
-      console.log('Show dare set to true');
-      
       console.log('=== DARE CARD SUCCESSFULLY SHOWN ===');
     } else {
       console.log('=== NO MORE DARE CARDS, ENDING GAME ===');
-      // No more dares, check for winner based on action cards
-      const player1Cards = gameSession.players[0].actionCards.length;
-      const player2Cards = gameSession.players[1].actionCards.length;
-      
-      console.log('Game ended - Player 1 cards:', player1Cards, 'Player 2 cards:', player2Cards);
-      
-      if (player1Cards < player2Cards) {
-        // Player 2 wins (fewer action cards means they skipped less)
-        setGameState('endgameTriggered');
-        navigate('/endgame');
-      } else if (player2Cards < player1Cards) {
-        // Player 1 wins
-        setGameState('endgameTriggered');
-        navigate('/endgame');
-      } else {
-        // Tie - random winner
-        const winner = Math.random() > 0.5 ? 0 : 1;
-        console.log('Tie resolved - winner:', winner);
-        setGameState('endgameTriggered');
-        navigate('/endgame');
-      }
+      // No more dares, trigger endgame
+      setGameState('endgameTriggered');
+      navigate('/endgame');
     }
   };
 
@@ -107,29 +81,17 @@ export default function GamePlay() {
 
     if (direction === 'left') {
       // Accept dare
-      controls.start(animations.cardSwipe.accept);
+      await controls.start(animations.cardSwipe.accept);
       toast.success('Dare accepted!');
       acceptDare();
     } else {
       // Skip dare
-      controls.start(animations.cardSwipe.skip);
+      await controls.start(animations.cardSwipe.skip);
       toast.info('Dare skipped - added to skip bank!');
       skipDare();
     }
-
-    // Wait for animation to complete
-    await new Promise(resolve => setTimeout(resolve, 800));
     
-    // Reset animation controls to center position for next card
-    console.log('Resetting animation controls after swipe');
-    await controls.start({ 
-      x: 0, 
-      rotate: 0, 
-      opacity: 1, 
-      transition: { duration: 0 } 
-    });
-    
-    // Reset for next turn - but let the store handle the progression
+    // Reset component state (the game state change will trigger the next turn)
     setShowDare(false);
     setCurrentDare(null);
   };
