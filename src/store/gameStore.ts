@@ -17,6 +17,7 @@ interface GameStore {
   selectSkipDare: (dare: DareCard) => void;
   nextTurn: () => void;
   continueToNextTurn: () => void;
+  confirmCompletion: () => void;
   resetGame: () => void;
   setGameState: (state: GameState) => void;
 }
@@ -114,10 +115,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     console.log('Dare accepted by player:', gameSession.currentPlayerIndex);
     
-    // Move directly to continue screen - no delays
+    // Move to confirmation screen instead of continue screen
     const updatedSession = {
       ...gameSession,
-      gameState: 'continueScreen' as GameState
+      gameState: 'awaitingConfirmation' as GameState
     };
 
     set({ gameSession: updatedSession });
@@ -144,11 +145,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Draw action card immediately
     const actionCard = get().drawActionCard();
     
-    // Move to continue screen
+    // Move to confirmation screen instead of continue screen
     const updatedSession = {
       ...gameSession,
       players: updatedPlayers as [Player, Player],
-      gameState: 'continueScreen' as GameState
+      gameState: 'awaitingConfirmation' as GameState
     };
 
     set({ gameSession: updatedSession });
@@ -281,6 +282,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
     } else {
       // Simply move to next turn from continue screen
       get().nextTurn();
+    }
+  },
+
+  confirmCompletion: () => {
+    const { gameSession } = get();
+    if (!gameSession) return;
+
+    console.log('Confirming completion and moving to continue screen');
+    
+    // Check for endgame condition first
+    const endgameResult = get().checkEndgameCondition();
+    if (endgameResult) {
+      console.log('Endgame triggered from confirmation! Winner:', endgameResult.winner.name, 'Loser:', endgameResult.loser.name);
+      const updatedSessionWithWinner = {
+        ...gameSession,
+        winner: endgameResult.winner,
+        loser: endgameResult.loser,
+        gameState: 'endgameTriggered' as GameState
+      };
+      set({ gameSession: updatedSessionWithWinner });
+    } else {
+      // Move to continue screen
+      const updatedSession = {
+        ...gameSession,
+        gameState: 'continueScreen' as GameState
+      };
+      set({ gameSession: updatedSession });
     }
   },
 

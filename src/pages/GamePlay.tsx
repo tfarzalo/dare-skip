@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 
 export default function GamePlay() {
   const navigate = useNavigate();
-  const { gameSession, drawDareCard, acceptDare, skipDare, setGameState, continueToNextTurn } = useGameStore();
+  const { gameSession, drawDareCard, acceptDare, skipDare, setGameState, continueToNextTurn, confirmCompletion } = useGameStore();
   const [currentDare, setCurrentDare] = useState<any>(null);
   const [showDare, setShowDare] = useState(false);
   const controls = useAnimation();
@@ -167,6 +167,11 @@ export default function GamePlay() {
     continueToNextTurn();
   };
 
+  const handleConfirmCompletion = () => {
+    console.log('Confirming completion, moving to continue screen');
+    confirmCompletion();
+  };
+
   return (
     <div className={`min-h-screen ${currentTheme.background} velvet-overlay relative overflow-hidden`}>
       {/* Quit Button */}
@@ -179,6 +184,47 @@ export default function GamePlay() {
           <LogOut className="w-5 h-5" />
         </button>
       </div>
+
+      {/* Confirmation Screen */}
+      {gameSession.gameState === 'awaitingConfirmation' && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-30 flex items-center justify-center"
+        >
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-gray-900/90 backdrop-blur-sm rounded-2xl p-8 text-center space-y-6 max-w-md mx-4"
+          >
+            <div className="space-y-4">
+              <Eye className="w-16 h-16 text-amber-500 mx-auto" />
+              <h2 className="serif text-2xl font-bold text-white">
+                Dare Completed?
+              </h2>
+              <p className="text-gray-300">
+                Has {currentPlayer?.name} completed their dare?
+              </p>
+            </div>
+            
+            <div className="flex gap-4">
+              <button
+                onClick={handleConfirmCompletion}
+                className="flex-1 px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full text-white font-bold text-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
+              >
+                Yes, Completed
+              </button>
+              <button
+                onClick={() => setGameState('playerTurn')}
+                className="flex-1 px-6 py-4 bg-gradient-to-r from-gray-600 to-gray-700 rounded-full text-white font-bold text-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
+              >
+                Not Yet
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
 
       {/* Continue Screen */}
       {gameSession.gameState === 'continueScreen' && (
@@ -199,7 +245,7 @@ export default function GamePlay() {
                 Ready for next turn?
               </h2>
               <p className="text-gray-300">
-                {gameSession.players[gameSession.currentPlayerIndex === 0 ? 1 : 0].name}'s turn is next
+                {gameSession.players[gameSession.currentPlayerIndex].name}'s turn is next
               </p>
             </div>
             
@@ -242,7 +288,9 @@ export default function GamePlay() {
         className="absolute top-20 left-0 right-0 text-center z-10"
       >
         <h2 className="serif text-2xl md:text-3xl font-bold text-white mb-2">
-          It's {currentPlayer?.name}'s turn
+          {gameSession.gameState === 'awaitingConfirmation' ? 'Confirm Dare Completion' : 
+           gameSession.gameState === 'continueScreen' ? 'Get Ready' :
+           `It's ${currentPlayer?.name}'s turn`}
         </h2>
         <p className="text-gray-300 text-sm">
           {gameSession.dareDeck.length} dares remaining
@@ -277,7 +325,7 @@ export default function GamePlay() {
       )}
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 pt-32 pb-8 min-h-screen flex items-center justify-center">
+      <div className="container mx-auto px-4 pt-32 pb-32 min-h-screen flex items-center justify-center">
         {!showDare ? (
           <motion.div
             {...animations.fadeIn}
@@ -321,31 +369,41 @@ export default function GamePlay() {
                 </p>
               </div>
 
-              {/* Card Footer */}
+              {/* Card Footer - Swipe Instructions Only */}
               <div className="text-center">
-                <p className="text-sm text-gray-300 mb-6 font-medium">
+                <p className="text-sm text-gray-300 font-medium">
                   Swipe left to accept • Swipe right to skip
                 </p>
-                
-                <div className="flex justify-center gap-6">
-                  <button
-                    onClick={() => handleSwipe('left')}
-                    className="px-8 py-4 bg-green-600/80 hover:bg-green-600 rounded-full text-white font-bold text-lg transition-all duration-200 transform hover:scale-105 shadow-lg backdrop-blur-sm"
-                  >
-                    Accept Dare
-                  </button>
-                  <button
-                    onClick={() => handleSwipe('right')}
-                    className="px-8 py-4 bg-red-600/80 hover:bg-red-600 rounded-full text-white font-bold text-lg transition-all duration-200 transform hover:scale-105 shadow-lg backdrop-blur-sm"
-                  >
-                    Skip Dare
-                  </button>
-                </div>
               </div>
             </div>
           </motion.div>
         )}
       </div>
+
+      {/* Bottom Action Buttons */}
+      {showDare && gameSession.gameState === 'playerTurn' && (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="fixed bottom-0 left-0 right-0 p-4 bg-black/20 backdrop-blur-sm z-20"
+        >
+          <div className="container mx-auto flex gap-4 max-w-md">
+            <button
+              onClick={() => handleSwipe('left')}
+              className="flex-1 px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full text-white font-bold text-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg"
+            >
+              Accept Dare
+            </button>
+            <button
+              onClick={() => handleSwipe('right')}
+              className="flex-1 px-6 py-4 bg-gradient-to-r from-red-600 to-rose-600 rounded-full text-white font-bold text-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg"
+            >
+              Skip Dare
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Action Card Indicator */}
       <motion.div
