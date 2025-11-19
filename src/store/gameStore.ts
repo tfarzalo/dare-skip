@@ -20,6 +20,7 @@ interface GameStore {
   confirmCompletion: () => void;
   resetGame: () => void;
   setGameState: (state: GameState) => void;
+  advanceToNextRound: () => boolean;
 }
 
 const createInitialSettings = (): GameSettings => ({
@@ -60,13 +61,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gameSettings: createInitialSettings(),
 
   initializeGame: (players, settings) => {
+    // Filter dares by starting spice level for initial round
     const filteredDares = filterDaresBySpiceLevel(dareCards, settings.spiceLevel);
     const filteredActions = filterActionsByCategories(actionCards, settings.enabledActionCategories);
     
-    // Shuffle and select cards
+    // Shuffle and select cards for first round (10 cards)
     const shuffledDares = shuffleArray(filteredDares);
-    const selectedDares = shuffledDares.slice(0, settings.deckSize);
+    const selectedDares = shuffledDares.slice(0, 10); // Always start with 10 cards
     const shuffledActions = shuffleArray(filteredActions);
+
+    // Calculate total rounds based on all 68 dares across 6 levels
+    const totalRounds = 6; // 6 rounds of spiciness progression
+    const cardsPerRound = 10; // 10-12 cards per round
 
     const gameSession: GameSession = {
       players: [
@@ -78,17 +84,57 @@ export const useGameStore = create<GameStore>((set, get) => ({
       actionDeck: shuffledActions,
       usedDares: [],
       usedActions: [],
-      gameState: 'playerTurn'
+      gameState: 'playerTurn',
+      currentRound: 1,
+      totalRounds,
+      cardsPerRound,
+      currentSpiceLevel: settings.spiceLevel
     };
 
     set({ gameSession, gameSettings: settings });
   },
 
   drawDareCard: () => {
-    const { gameSession } = get();
-    if (!gameSession || gameSession.dareDeck.length === 0) {
-      console.log('No dare cards available');
+    const { gameSession, advanceToNextRound } = get();
+    if (!gameSession) {
+      console.log('No game session available');
       return null;
+    }
+
+    // If current round deck is empty, try to advance to next round
+    if (gameSession.dareDeck.length === 0) {
+      console.log(`Round ${gameSession.currentRound} completed, advancing to next round`);
+      const advanced = advanceToNextRound();
+      
+      if (!advanced) {
+        console.log('No more rounds available, game completed');
+        return null;
+      }
+      
+      // Get the updated session after advancing
+      const updatedSession = get().gameSession!;
+      
+      // Now draw from the new round's deck
+      if (updatedSession.dareDeck.length === 0) {
+        console.log('New round has no cards available');
+        return null;
+      }
+      
+      // Get a random card from the new round's deck
+      const randomIndex = Math.floor(Math.random() * updatedSession.dareDeck.length);
+      const drawnCard = updatedSession.dareDeck[randomIndex];
+      const remainingDeck = updatedSession.dareDeck.filter((_, index) => index !== randomIndex);
+      
+      console.log(`Drew dare card from round ${updatedSession.currentRound}:`, drawnCard.name, 'Remaining:', remainingDeck.length);
+      
+      const finalUpdatedSession = {
+        ...updatedSession,
+        dareDeck: remainingDeck,
+        usedDares: [...updatedSession.usedDares, drawnCard]
+      };
+
+      set({ gameSession: finalUpdatedSession });
+      return drawnCard;
     }
 
     // Get a random card from the remaining deck
@@ -96,7 +142,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const drawnCard = gameSession.dareDeck[randomIndex];
     const remainingDeck = gameSession.dareDeck.filter((_, index) => index !== randomIndex);
     
-    console.log('Drew dare card:', drawnCard.name, 'Remaining:', remainingDeck.length);
+    console.log(`Drew dare card from round ${gameSession.currentRound}:`, drawnCard.name, 'Remaining:', remainingDeck.length);
     
     // Keep game state as playerTurn - don't change state here
     const updatedSession = {
@@ -326,5 +372,76 @@ export const useGameStore = create<GameStore>((set, get) => ({
         gameState: state
       }
     });
+  },
+
+  advanceToNextRound: () => {
+    const { gameSession, gameSettings } = get();
+    if (!gameSession) return false;
+
+    const nextRound = gameSession.currentRound + 1;
+    
+    // Check if we've completed all rounds
+    if (nextRound > gameSession.totalRounds) {
+      console.log('All rounds completed! Game finished.');
+      return false;
+    }
+
+    // Determine next spiciness level based on round progression
+    let nextSpiceLevel: SpiceLevel;
+    if (nextRound <= 2) {
+      nextSpiceLevel = 'soft';
+    } else if (nextRound <= 4) {
+      nextSpiceLevel = 'medium';
+    } else {
+      nextSpiceLevel = 'wild';
+    }
+
+    console.log(`Advancing to round ${nextRound} with spiciness level: ${nextSpiceLevel}`);
+
+    // Filter dares for the new spiciness level
+    const filteredDares = filterDaresBySpiceLevel(dareCards, nextSpiceLevel);
+    
+    // Remove already used dares from the pool
+    const availableDares = filteredDares.filter(dare => 
+      !gameSession.usedDares.some(used => used.id === dare.id)
+    );
+
+    // Calculate how many cards to include in this round
+    // For rounds 1-5: use 10 cards each, for round 6: use remaining cards
+    let cardsForThisRound: number;
+    if (nextRound < 6) {
+      cardsForThisRound = Math.min(10, availableDares.length);
+    } else {
+      // Last round - use all remaining cards of this level, up to a reasonable amount
+      cardsForThisRound = Math.min(12, availableDares.length);
+    }
+
+    // If we don't have enough unused cards, include some from the full pool
+    let daresForNewRound: DareCard[];
+    if (availableDares.length >= cardsForThisRound) {
+      daresForNewRound = availableDares.slice(0, cardsForThisRound);
+    } else {
+      // Mix available and some from the full pool to ensure we have cards
+      const fromAvailable = availableDares;
+      const neededFromPool = cardsForThisRound - availableDares.length;
+      const fromPool = filteredDares
+        .filter(dare => !availableDares.some(available => available.id === dare.id))
+        .slice(0, neededFromPool);
+      daresForNewRound = [...fromAvailable, ...fromPool];
+    }
+
+    // Shuffle the new deck
+    const shuffledNewDeck = shuffleArray(daresForNewRound);
+
+    const updatedSession = {
+      ...gameSession,
+      currentRound: nextRound,
+      currentSpiceLevel: nextSpiceLevel,
+      dareDeck: shuffledNewDeck,
+      gameState: 'playerTurn' as GameState
+    };
+
+    set({ gameSession: updatedSession });
+    return true;
   }
 }));

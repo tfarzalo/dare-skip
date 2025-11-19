@@ -52,6 +52,10 @@ export interface GameSession {
   loser?: Player;
   selectedSkipDare?: DareCard;
   matchingActionSet?: ActionCard[];
+  currentRound: number;
+  totalRounds: number;
+  cardsPerRound: number;
+  currentSpiceLevel: SpiceLevel;
 }
 
 export interface ThemeColors {

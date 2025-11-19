@@ -41,9 +41,19 @@ export default function GamePlay() {
     console.log('=== STARTING NEW TURN ===');
     console.log('Starting new turn for player:', gameSession.currentPlayerIndex);
     console.log('Current game state:', gameSession.gameState);
+    console.log('Current round:', gameSession.currentRound);
+    console.log('Current spiciness level:', gameSession.currentSpiceLevel);
     console.log('Dare deck remaining:', gameSession.dareDeck.length);
     console.log('Show dare before reset:', showDare);
     console.log('Current dare before reset:', currentDare);
+    
+    // Check if this is a new round starting
+    if (gameSession.dareDeck.length === 0 && gameSession.currentRound < gameSession.totalRounds) {
+      toast.success(`Round ${gameSession.currentRound + 1} Starting - ${gameSession.currentSpiceLevel} Level!`, {
+        duration: 3000,
+        position: 'top-center'
+      });
+    }
     
     // Reset component state
     setShowDare(false);
@@ -247,6 +257,14 @@ export default function GamePlay() {
               <p className="text-gray-300">
                 {gameSession.players[gameSession.currentPlayerIndex].name}'s turn is next
               </p>
+              <div className="flex justify-center gap-4 text-sm">
+                <span className="text-amber-300 font-medium">
+                  Round {gameSession.currentRound}/{gameSession.totalRounds}
+                </span>
+                <span className="text-rose-300 font-medium capitalize">
+                  {gameSession.currentSpiceLevel} Level
+                </span>
+              </div>
             </div>
             
             <button
@@ -292,9 +310,17 @@ export default function GamePlay() {
            gameSession.gameState === 'continueScreen' ? 'Get Ready' :
            `It's ${currentPlayer?.name}'s turn`}
         </h2>
-        <p className="text-gray-300 text-sm">
-          {gameSession.dareDeck.length} dares remaining
-        </p>
+        <div className="flex justify-center items-center gap-4 text-sm">
+          <span className="text-amber-300 font-medium">
+            Round {gameSession.currentRound}/{gameSession.totalRounds}
+          </span>
+          <span className="text-rose-300 font-medium capitalize">
+            {gameSession.currentSpiceLevel} Level
+          </span>
+          <span className="text-gray-300">
+            {gameSession.dareDeck.length} dares remaining
+          </span>
+        </div>
       </motion.div>
 
       {/* Swipe Indicators - Simplified and less intrusive */}
